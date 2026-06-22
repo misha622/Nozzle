@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nozzle — Alert Deduplication Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0d0f14;--bg1:#13161e;--bg2:#1a1d27;--bg3:#21253200;
+  --border:#ffffff12;--border2:#ffffff20;
+  --text1:#e8eaf0;--text2:#8b90a0;--text3:#555a6a;
+  --blue:#4f8ef7;--blue-dim:#1d3460;--blue-muted:#4f8ef720;
+  --teal:#2dd4b0;--teal-dim:#0d3d33;
+  --amber:#f5a623;--amber-dim:#3d2800;
+  --red:#f06060;--red-dim:#3d1414;
+  --green:#5ccd7a;--green-dim:#0f3020;
+  --purple:#a78bfa;--purple-dim:#2a1f4a;
+  --radius:8px;--radius-lg:12px;
+}
+body{background:var(--bg0);color:var(--text1);font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:var(--bg1);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column}
+.logo{padding:20px 18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.logo-icon{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0}
+.logo-text{font-size:15px;font-weight:500;letter-spacing:.01em}
+.logo-ver{font-size:10px;color:var(--text3);margin-top:1px}
+.nav{padding:12px 0;flex:1}
+.nav-section{padding:6px 18px 4px;font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 18px;cursor:pointer;color:var(--text2);transition:all .15s;border-left:2px solid transparent;font-size:13px}
+.nav-item:hover{background:var(--bg2);color:var(--text1)}
+.nav-item.active{background:var(--blue-muted);color:var(--blue);border-left-color:var(--blue)}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--red-dim);color:var(--red);font-size:10px;padding:1px 6px;border-radius:10px;font-weight:500}
+.nav-badge.ok{background:var(--green-dim);color:var(--green)}
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--border)}
+.source-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);padding:4px 0}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot.ok{background:var(--green)}
+.dot.err{background:var(--red)}
+.dot.warn{background:var(--amber)}
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;flex-shrink:0}
+.topbar-title{font-size:14px;font-weight:500;flex:1}
+.topbar-time{font-size:11px;color:var(--text3);margin-right:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius);font-size:12px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text1);transition:all .15s;font-family:inherit}
+.btn:hover{background:var(--bg3);border-color:var(--border2)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{opacity:.9}
+.btn i{font-size:14px}
+.content{padding:20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;position:relative;overflow:hidden}
+.kpi-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.kpi-val{font-size:26px;font-weight:500;line-height:1;margin-bottom:4px}
+.kpi-delta{font-size:11px;color:var(--text2)}
+.kpi-delta .up{color:var(--green)}
+.kpi-delta .dn{color:var(--red)}
+.kpi-accent{position:absolute;right:0;top:0;bottom:0;width:3px}
+.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:12px}
+.panel-header{display:flex;align-items:center;gap:8px}
+.panel-title{font-size:13px;font-weight:500;flex:1}
+.panel-hint{font-size:11px;color:var(--text3)}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.filter-btn{padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;font-family:inherit}
+.filter-btn.active{background:var(--blue-muted);border-color:var(--blue);color:var(--blue)}
+.chart-wrap{position:relative;width:100%}
+.clusters-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
+.cluster-row{background:var(--bg2);border-radius:var(--radius);padding:10px 12px;cursor:pointer;transition:background .15s;border:1px solid transparent}
+.cluster-row:hover{border-color:var(--border2)}
+.cluster-row.selected{border-color:var(--blue);background:var(--blue-muted)}
+.cluster-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.cluster-name{font-size:12px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cluster-count{font-size:11px;color:var(--text2);white-space:nowrap}
+.cluster-bar-bg{height:3px;background:var(--bg0);border-radius:2px;overflow:hidden}
+.cluster-bar{height:3px;border-radius:2px;background:var(--blue)}
+.cluster-meta{display:flex;gap:8px;font-size:10px;color:var(--text3);margin-top:4px}
+.alerts-table-wrap{overflow-x:auto}
+.alerts-table{width:100%;border-collapse:collapse;font-size:12px}
+.alerts-table th{color:var(--text3);font-weight:400;text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.alerts-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.alerts-table tr:last-child td{border-bottom:none}
+.alerts-table tr:hover td{background:var(--bg2)}
+.sev{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500}
+.sev.crit{background:var(--red-dim);color:var(--red)}
+.sev.high{background:var(--amber-dim);color:var(--amber)}
+.sev.med{background:var(--blue-muted);color:var(--blue)}
+.sev.low{background:var(--green-dim);color:var(--green)}
+.status-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:4px}
+.status-pill.clustered{background:var(--purple-dim);color:var(--purple)}
+.status-pill.new{background:var(--amber-dim);color:var(--amber)}
+.status-pill.dismissed{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
+.status-pill.escalated{background:var(--red-dim);color:var(--red)}
+.agent-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;background:var(--bg2);color:var(--text2);border:1px solid var(--border);font-family:monospace}
+.rule-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rule-row:last-child{border-bottom:none}
+.rule-id{font-family:monospace;font-size:11px;color:var(--blue);min-width:60px}
+.rule-name{flex:1;color:var(--text2)}
+.rule-count{font-weight:500;min-width:40px;text-align:right}
+.noise-bar-bg{flex:1;max-width:80px;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden}
+.noise-bar{height:4px;border-radius:2px;background:var(--amber)}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.health-panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.health-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.health-row:last-child{border-bottom:none}
+.health-label{font-size:12px;color:var(--text2);flex:1}
+.health-val{font-size:12px;font-weight:500}
+.health-val.ok{color:var(--green)}
+.health-val.warn{color:var(--amber)}
+.health-val.err{color:var(--red)}
+.view{display:none;flex-direction:column;gap:16px}
+.view.active{display:flex}
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:8px}
+.tab{padding:8px 16px;font-size:12px;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab:hover:not(.active){color:var(--text2)}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">&#128165;</div>
+    <div>
+      <div class="logo-text">Nozzle</div>
+      <div class="logo-ver">v0.1 · Alert Deduplication</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Monitor</div>
+    <div class="nav-item active" onclick="switchView('overview',this)">Overview</div>
+    <div class="nav-item" onclick="switchView('clusters',this)">Clusters<span class="nav-badge" id="cluster-badge">0</span></div>
+    <div class="nav-item" onclick="switchView('alerts',this)">Alerts<span class="nav-badge" id="alert-badge">0</span></div>
+    <div class="nav-section">Analyze</div>
+    <div class="nav-item" onclick="switchView('rules',this)">Rule noise</div>
+    <div class="nav-item" onclick="switchView('health',this)">System health<span class="nav-badge ok">OK</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">API Status</div>
+    <div class="source-row" id="api-status"><span class="dot ok"></span>Connected</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Overview</div>
+    <span class="topbar-time" id="clock"></span>
+    <button class="btn" onclick="runClustering()">Run clustering</button>
+    <button class="btn" onclick="refreshData()">Refresh</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Overview -->
+    <div id="view-overview" class="view active">
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">Alerts 24h</div>
+          <div class="kpi-val" id="kpi-total">-</div>
+          <div class="kpi-delta">Loading...</div>
+          <div class="kpi-accent" style="background:var(--blue)"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Clusters</div>
+          <div class="kpi-val" id="kpi-clusters">-</div>
+          <div class="kpi-delta">Loading...</div>
+          <div class="kpi-accent" style="background:var(--purple)"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Noise reduction</div>
+          <div class="kpi-val" id="kpi-noise">-</div>
+          <div class="kpi-delta">Loading...</div>
+          <div class="kpi-accent" style="background:var(--teal)"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Alerts in clusters</div>
+          <div class="kpi-val" id="kpi-clustered">-</div>
+          <div class="kpi-delta">Loading...</div>
+          <div class="kpi-accent" style="background:var(--green)"></div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Status breakdown</div>
+            <div class="panel-hint" id="donut-total">0 total</div>
+          </div>
+          <div class="chart-wrap" style="height:180px">
+            <canvas id="statusChart"></canvas>
+          </div>
+          <div id="donut-legend" style="display:flex;flex-direction:column;gap:5px;font-size:11px;margin-top:4px"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Top noisy rules</div>
+          </div>
+          <div id="noisy-rules"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Active clusters</div>
+          <span class="panel-hint">click to view alerts</span>
+        </div>
+        <div class="clusters-list" id="clusters-list"></div>
+      </div>
+    </div>
+
+    <!-- Clusters -->
+    <div id="view-clusters" class="view">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">All clusters</div>
+          <button class="btn" onclick="runClustering()">Re-run clustering</button>
+        </div>
+        <div class="alerts-table-wrap">
+          <table class="alerts-table">
+            <thead><tr><th>Cluster</th><th>Strategy</th><th>Alerts</th><th>Confidence</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            <tbody id="clusters-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="view-alerts" class="view">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Recent alerts</div>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="filterAlerts('all',this)">All</button>
+            <button class="filter-btn" onclick="filterAlerts('NEW',this)">New</button>
+            <button class="filter-btn" onclick="filterAlerts('CLUSTERED',this)">Clustered</button>
+          </div>
+        </div>
+        <div class="alerts-table-wrap">
+          <table class="alerts-table">
+            <thead><tr><th>Rule</th><th>Agent</th><th>Severity</th><th>Status</th><th>Description</th><th>Received</th></tr></thead>
+            <tbody id="alerts-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rule noise -->
+    <div id="view-rules" class="view">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:12px">Rule noise index</div>
+        <div id="rules-full-list"></div>
+      </div>
+    </div>
+
+    <!-- Health -->
+    <div id="view-health" class="view">
+      <div class="stats-row">
+        <div class="health-panel">
+          <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Services</div>
+          <div class="health-row"><span class="dot ok"></span><span class="health-label">FastAPI server</span><span class="health-val ok">running</span></div>
+          <div class="health-row"><span class="dot ok"></span><span class="health-label">Database</span><span class="health-val ok" id="db-status">checking...</span></div>
+          <div class="health-row"><span class="dot ok"></span><span class="health-label">API</span><span class="health-val ok" id="api-health">checking...</span></div>
+        </div>
+        <div class="health-panel">
+          <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Database</div>
+          <div class="health-row"><span class="health-label">Total alerts</span><span class="health-val" id="db-total-alerts">-</span></div>
+          <div class="health-row"><span class="health-label">Total clusters</span><span class="health-val" id="db-total-clusters">-</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const API = '/api/v1';
+let CLUSTERS = [];
+let ALERTS = [];
+let NOISY_RULES = [];
+let alertFilter = 'all';
+
+// ============================================
+// Data fetching
+// ============================================
+
+async function fetchClusters() {
+    try {
+        const resp = await fetch(`${API}/clusters/`);
+        CLUSTERS = await resp.json();
+        document.getElementById('cluster-badge').textContent = CLUSTERS.length;
+        renderClusters();
+        renderClustersTable();
+    } catch (e) {
+        console.error('Failed to fetch clusters:', e);
+    }
+}
+
+async function fetchAlerts() {
+    try {
+        const resp = await fetch(`${API}/alerts/?page_size=100`);
+        const data = await resp.json();
+        ALERTS = data.items || [];
+        document.getElementById('alert-badge').textContent = data.total || 0;
+        renderAlertsTable();
+    } catch (e) {
+        console.error('Failed to fetch alerts:', e);
+    }
+}
+
+async function fetchStats() {
+    try {
+        const [alertsResp, clustersResp, healthResp] = await Promise.all([
+            fetch(`${API}/alerts/?page_size=1`),
+            fetch(`${API}/clusters/`),
+            fetch(`${API}/health/ready`)
+        ]);
+
+        const alertsData = await alertsResp.json();
+        const clustersData = await clustersResp.json();
+        const healthData = await healthResp.json();
+
+        const totalAlerts = alertsData.total || 0;
+        const totalClusters = clustersData.length || 0;
+        const totalClustered = clustersData.reduce((sum, c) => sum + (c.alert_count || 0), 0);
+        const noisePct = totalAlerts > 0 ? Math.round(totalClustered / totalAlerts * 100) : 0;
+
+        document.getElementById('kpi-total').textContent = totalAlerts;
+        document.getElementById('kpi-clusters').textContent = totalClusters;
+        document.getElementById('kpi-noise').textContent = noisePct + '%';
+        document.getElementById('kpi-clustered').textContent = totalClustered;
+        document.getElementById('donut-total').textContent = totalAlerts + ' total';
+        document.getElementById('db-total-alerts').textContent = totalAlerts;
+        document.getElementById('db-total-clusters').textContent = totalClusters;
+
+        if (healthData.status === 'ready') {
+            document.getElementById('db-status').textContent = 'connected';
+            document.getElementById('api-health').textContent = 'ok';
+        }
+
+        updateDonutChart(totalClustered, totalAlerts - totalClustered, 0, 0);
+        updateDonutLegend(totalClustered, totalAlerts - totalClustered, 0, 0);
+        buildNoisyRules(clustersData);
+    } catch (e) {
+        console.error('Failed to fetch stats:', e);
+    }
+}
+
+function buildNoisyRules(clusters) {
+    const ruleCounts = {};
+    clusters.forEach(c => {
+        const ruleMatch = c.name.match(/Rule (\d+)/);
+        const ruleId = ruleMatch ? ruleMatch[1] : 'unknown';
+        ruleCounts[ruleId] = (ruleCounts[ruleId] || 0) + (c.alert_count || 0);
+    });
+
+    const max = Math.max(...Object.values(ruleCounts), 1);
+    NOISY_RULES = Object.entries(ruleCounts)
+        .map(([id, count]) => ({ id, name: `Rule ${id}`, count, pct: count / max }))
+        .sort((a, b) => b.count - a.count);
+
+    renderNoisyRules();
+}
+
+// ============================================
+// Rendering
+// ============================================
+
+function renderClusters() {
+    const max = CLUSTERS.reduce((m, c) => Math.max(m, c.alert_count || 0), 1);
+    document.getElementById('clusters-list').innerHTML = CLUSTERS.slice(0, 10).map((c, i) => `
+        <div class="cluster-row${i === 0 ? ' selected' : ''}" onclick="selectCluster(this); viewClusterAlerts('${c.id}')">
+            <div class="cluster-top">
+                <span class="cluster-name">${c.name}</span>
+                <span class="cluster-count">${c.alert_count} alerts</span>
+            </div>
+            <div class="cluster-bar-bg">
+                <div class="cluster-bar" style="width:${Math.round(c.alert_count / max * 100)}%"></div>
+            </div>
+            <div class="cluster-meta">
+                <span>${c.description ? c.description.substring(0, 60) : ''}</span>
+                <span style="margin-left:auto">${Math.round(c.confidence * 100)}% conf · ${c.status}</span>
+            </div>
+        </div>`).join('') || '<div style="color:var(--text3);padding:12px">No clusters yet</div>';
+}
+
+function renderClustersTable() {
+    document.getElementById('clusters-tbody').innerHTML = CLUSTERS.map(c => `
+        <tr>
+            <td style="color:var(--text1);font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</td>
+            <td><span class="agent-tag">${c.strategy}</span></td>
+            <td style="font-weight:500">${c.alert_count}</td>
+            <td>${Math.round(c.confidence * 100)}%</td>
+            <td><span class="status-pill ${c.status === 'open' ? 'new' : c.status === 'reviewed' ? 'clustered' : 'dismissed'}">${c.status}</span></td>
+            <td style="color:var(--text3)">${c.created_at ? new Date(c.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}</td>
+            <td><button class="btn" onclick="viewClusterAlerts('${c.id}')">View</button></td>
+        </tr>`).join('') || '<tr><td colspan="7" style="color:var(--text3);padding:12px">No clusters yet</td></tr>';
+}
+
+function renderAlertsTable() {
+    const items = alertFilter === 'all' ? ALERTS : ALERTS.filter(a => a.status === alertFilter);
+    document.getElementById('alerts-tbody').innerHTML = items.slice(0, 100).map(a => {
+        const sevNum = a.severity || 0;
+        const sevLabel = sevNum >= 10 ? 'critical' : sevNum >= 7 ? 'high' : sevNum >= 4 ? 'medium' : 'low';
+        return `
+        <tr>
+            <td><span class="rule-id">${a.rule_id}</span></td>
+            <td><span class="agent-tag">${a.agent_name || 'unknown'}</span></td>
+            <td><span class="sev ${sevClass(sevLabel)}">${sevLabel}</span></td>
+            <td><span class="status-pill ${(a.status || 'new').toLowerCase()}">${a.status || 'new'}</span></td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${a.description || ''}</td>
+            <td style="color:var(--text3)">${a.received_at ? new Date(a.received_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" style="color:var(--text3);padding:12px">No alerts found</td></tr>';
+}
+
+function renderNoisyRules() {
+    document.getElementById('noisy-rules').innerHTML = NOISY_RULES.slice(0, 6).map(r => `
+        <div class="rule-row">
+            <span class="rule-id">${r.id}</span>
+            <span class="rule-name">${r.name}</span>
+            <div class="noise-bar-bg"><div class="noise-bar" style="width:${Math.round(r.pct * 100)}%"></div></div>
+            <span class="rule-count">${r.count}</span>
+        </div>`).join('') || '<div style="color:var(--text3);padding:12px">No data</div>';
+
+    document.getElementById('rules-full-list').innerHTML = NOISY_RULES.map(r => `
+        <div class="rule-row">
+            <span class="rule-id">${r.id}</span>
+            <span class="rule-name">${r.name}</span>
+            <div class="noise-bar-bg" style="max-width:120px"><div class="noise-bar" style="width:${Math.round(r.pct * 100)}%"></div></div>
+            <span class="rule-count">${r.count}</span>
+        </div>`).join('') || '<div style="color:var(--text3);padding:12px">No data</div>';
+}
+
+// ============================================
+// Charts
+// ============================================
+
+let statusChartInstance = null;
+
+function initCharts() {
+    const sc = document.getElementById('statusChart').getContext('2d');
+    statusChartInstance = new Chart(sc, {
+        type: 'doughnut',
+        data: {
+            labels: ['Clustered', 'New', 'Escalated', 'Dismissed'],
+            datasets: [{data: [0, 0, 0, 0], backgroundColor: ['#4f8ef7', '#f5a623', '#f06060', '#555a6a'], borderWidth: 0, hoverOffset: 4}]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '72%',
+            plugins: {legend: {display: false}}
+        }
+    });
+}
+
+function updateDonutChart(clustered, newAlerts, escalated, dismissed) {
+    if (statusChartInstance) {
+        statusChartInstance.data.datasets[0].data = [clustered, newAlerts, escalated, dismissed];
+        statusChartInstance.update();
+    }
+}
+
+function updateDonutLegend(clustered, newAlerts, escalated, dismissed) {
+    const colors = ['#4f8ef7', '#f5a623', '#f06060', '#555a6a'];
+    const labels = ['Clustered', 'New', 'Escalated', 'Dismissed'];
+    const vals = [clustered, newAlerts, escalated, dismissed];
+    document.getElementById('donut-legend').innerHTML = labels.map((l, i) => `
+        <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;border-radius:2px;background:${colors[i]};flex-shrink:0"></span>
+            <span style="flex:1;color:var(--text2)">${l}</span>
+            <span style="color:var(--text1);font-weight:500">${vals[i]}</span>
+        </div>`).join('');
+}
+
+// ============================================
+// Actions
+// ============================================
+
+function switchView(name, el) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const targetView = document.getElementById('view-' + name);
+    if (targetView) targetView.classList.add('active');
+    if (el) el.classList.add('active');
+
+    const titles = {overview: 'Overview', clusters: 'Clusters', alerts: 'Alerts', rules: 'Rule noise', health: 'System health'};
+    document.getElementById('topbar-title').textContent = titles[name] || name;
+
+    if (name === 'clusters') fetchClusters();
+    if (name === 'alerts') fetchAlerts();
+    if (name === 'health') fetchStats();
+}
+
+function filterAlerts(status, el) {
+    alertFilter = status;
+    if (el && el.closest) {
+        el.closest('.filter-row').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+    }
+    renderAlertsTable();
+}
+
+function selectCluster(el) {
+    el.closest('.clusters-list').querySelectorAll('.cluster-row').forEach(r => r.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+async function viewClusterAlerts(clusterId) {
+    try {
+        const resp = await fetch(`${API}/clusters/${clusterId}`);
+        const cluster = await resp.json();
+        ALERTS = cluster.alerts || [];
+        alertFilter = 'all';
+        switchView('alerts', document.querySelector('.nav-item:nth-child(3)'));
+        renderAlertsTable();
+    } catch (e) {
+        console.error('Failed to load cluster alerts:', e);
+    }
+}
+
+async function runClustering() {
+    const btn = event && event.target ? event.target.closest('.btn') : document.querySelector('.btn');
+    if (!btn) return;
+    const orig = btn.innerHTML;
+    btn.innerHTML = 'Running...';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(`${API}/clusters/run`, { method: 'POST' });
+        const result = await resp.json();
+        await Promise.all([fetchClusters(), fetchAlerts(), fetchStats()]);
+    } catch (e) {
+        console.error('Clustering failed:', e);
+    } finally {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+}
+
+async function refreshData() {
+    await Promise.all([fetchClusters(), fetchAlerts(), fetchStats()]);
+}
+
+function sevClass(s) {
+    return {critical: 'crit', high: 'high', medium: 'med', low: 'low'}[s] || 'low';
+}
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+}
+
+// ============================================
+// Init
+// ============================================
+
+setInterval(updateClock, 1000);
+updateClock();
+initCharts();
+fetchClusters();
+fetchAlerts();
+fetchStats();
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nozzle.db.session import get_db
@@ -31,7 +32,7 @@ async def list_alerts(
     db: AsyncSession = Depends(get_db),
 ):
     """List alerts with optional filters."""
-    query = select(Alert)
+    query = select(Alert).options(selectinload(Alert.source))
     since = datetime.utcnow() - timedelta(hours=hours)
     query = query.where(Alert.received_at >= since)
     if status:
