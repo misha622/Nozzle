@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "AGPL-3.0"
 authors = [
-    {name = "Your Name", email = "you@example.com"}
+    {name = "misha622"}
 ]
 keywords = ["siem", "wazuh", "alert-fatigue", "ml", "soc"]
 

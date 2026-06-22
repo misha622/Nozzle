@@ -15,6 +15,7 @@ class RawAlert(BaseModel):
     """Сырой алерт от источника до нормализации."""
     external_id: str = Field(..., description="ID алерта во внешней системе")
     source_type: SourceType
+    source_id: UUID = Field(..., description="ID источника в нашей системе")
     raw_payload: dict = Field(..., description="Полный JSON от источника")
     received_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -32,7 +33,7 @@ class NormalizedAlert(BaseModel):
 
     rule_id: str
     rule_name: str | None = None
-    severity: SeverityLevel = SeverityLevel.INFO
+    severity: int = 0
 
     agent_name: str | None = None
     agent_id: str | None = None
@@ -50,7 +51,7 @@ class NormalizedAlert(BaseModel):
     received_at: datetime = Field(default_factory=datetime.utcnow)
     normalized_at: datetime = Field(default_factory=datetime.utcnow)
 
-    metadata: dict = Field(default_factory=dict)
+    extra_data: dict = Field(default_factory=dict)
 
     class Config:
         use_enum_values = True
@@ -70,7 +71,7 @@ class ClusterCandidate(BaseModel):
     alert_ids: list[UUID]
     alert_count: int = 0
     representative_alert_id: UUID | None = None  # Самый характерный алерт
-    metadata: dict = Field(default_factory=dict)
+    extra_data: dict = Field(default_factory=dict)
 
     def model_post_init(self, __context):
         if self.alert_count == 0:

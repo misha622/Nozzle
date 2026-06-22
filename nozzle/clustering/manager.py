@@ -61,7 +61,7 @@ class ClusteringManager:
                 source_id=UUID(a.source_id),
                 rule_id=a.rule_id,
                 rule_name=a.rule_name,
-                severity=a.severity if a.severity in (0,3,5,8,12,15) else 0,
+                severity=a.severity,
                 agent_name=a.agent_name,
                 agent_id=a.agent_id,
                 source_ip=a.source_ip,

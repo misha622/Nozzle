@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime
+from uuid import UUID
 from typing import AsyncIterator
 
 import httpx
@@ -44,7 +45,7 @@ class WazuhAdapter(SourceAdapter):
         """Logout and close HTTP client."""
         if self._client:
             try:
-                await self._client.post(f"{self.base_url}/security/user/authenticate")
+                await self._client.delete(f"{self.base_url}/security/user/authenticate")
             except Exception:
                 pass
             await self._client.aclose()
@@ -85,6 +86,7 @@ class WazuhAdapter(SourceAdapter):
                 yield RawAlert(
                     external_id=item.get("id", ""),
                     source_type=SourceType.WAZUH,
+                    source_id=UUID(self.source_id),
                     raw_payload=item,
                     received_at=datetime.utcnow(),
                 )

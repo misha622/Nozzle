@@ -95,7 +95,7 @@ async def get_cluster(
             AlertResponse(
                 id=a.id,
                 external_id=a.external_id,
-                source_type="wazuh",
+                source_type=a.source.type.value if a.source else "unknown",
                 rule_id=a.rule_id,
                 rule_name=a.rule_name,
                 severity=a.severity,
