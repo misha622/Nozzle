@@ -4,10 +4,12 @@ from typing import Type
 
 from nozzle.clustering.base import ClusteringStrategy
 from nozzle.clustering.strategies.rule_based import RuleBasedStrategy
+from nozzle.clustering.strategies.ml_based import MLBasedStrategy
 
 
 STRATEGY_REGISTRY: dict[str, Type[ClusteringStrategy]] = {
     "rule_based": RuleBasedStrategy,
+    "ml_based": MLBasedStrategy,
     # Future:
     # "field_similarity": FieldSimilarityStrategy,
     # "ml_based": MLBasedStrategy,
