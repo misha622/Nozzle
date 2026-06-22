@@ -2,13 +2,13 @@
 
 import logging
 from datetime import datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from nozzle.domain.models import Alert, Cluster
+from nozzle.domain.models import Alert, Cluster, RuleStats
 from nozzle.domain.enums import AlertStatus, ClusterStatus
 from nozzle.domain.schemas import NormalizedAlert, ClusterCandidate
 from nozzle.clustering.registry import get_strategy
@@ -37,7 +37,6 @@ class ClusteringManager:
         self, source_id: UUID | None = None, hours_back: int = 24
     ) -> dict:
         """Run clustering on unclustered alerts and persist results."""
-        # Fetch unclustered alerts
         query = select(Alert).options(selectinload(Alert.source)).where(
             Alert.status == AlertStatus.NEW,
             Alert.cluster_id.is_(None),
@@ -50,9 +49,8 @@ class ClusteringManager:
         alert_models = result.scalars().all()
 
         if not alert_models:
-            return {"clusters_created": 0, "alerts_clustered": 0}
+            return {"clusters_created": 0, "alerts_clustered": 0, "alerts_remaining": 0}
 
-        # Convert to NormalizedAlert
         normalized_alerts = [
             NormalizedAlert(
                 id=UUID(a.id),
@@ -79,11 +77,8 @@ class ClusteringManager:
             for a in alert_models
         ]
 
-        # Run strategy
         candidates = await self.strategy.cluster(normalized_alerts)
 
-        # Persist clusters
-        alert_id_map = {str(a.id): a for a in alert_models}
         clusters_created = 0
         alerts_clustered = 0
 
@@ -102,10 +97,7 @@ class ClusteringManager:
             )
             self.db.add(cluster)
 
-            # Update alerts to point to this cluster
-            alert_ids_to_update = [
-                str(aid) for aid in candidate.alert_ids
-            ]
+            alert_ids_to_update = [str(aid) for aid in candidate.alert_ids]
             await self.db.execute(
                 update(Alert)
                 .where(Alert.id.in_(alert_ids_to_update))
@@ -118,6 +110,7 @@ class ClusteringManager:
             clusters_created += 1
             alerts_clustered += candidate.alert_count
 
+        await self._update_rule_stats(candidates)
         await self.db.commit()
 
         return {
@@ -125,3 +118,44 @@ class ClusteringManager:
             "alerts_clustered": alerts_clustered,
             "alerts_remaining": len(alert_models) - alerts_clustered,
         }
+
+    async def _update_rule_stats(self, candidates):
+        """Update RuleStats after clustering."""
+        rule_counts = {}
+        for candidate in candidates:
+            for alert_id in candidate.alert_ids:
+                result = await self.db.execute(
+                    select(Alert).where(Alert.id == str(alert_id))
+                )
+                alert = result.scalar_one_or_none()
+                if alert:
+                    key = (alert.source_id, alert.rule_id)
+                    rule_counts[key] = rule_counts.get(key, 0) + 1
+
+        for (source_id, rule_id), count in rule_counts.items():
+            result = await self.db.execute(
+                select(RuleStats).where(
+                    RuleStats.source_id == source_id,
+                    RuleStats.external_rule_id == rule_id,
+                )
+            )
+            existing = result.scalar_one_or_none()
+
+            if existing:
+                existing.times_clustered += 1
+                existing.noise_score = min(1.0, existing.times_clustered / 50)
+                existing.last_seen_at = datetime.utcnow()
+                existing.updated_at = datetime.utcnow()
+            else:
+                rule_stat = RuleStats(
+                    id=str(uuid4()),
+                    source_id=source_id,
+                    external_rule_id=rule_id,
+                    rule_name=None,
+                    noise_score=min(0.5, count / 50),
+                    times_clustered=1,
+                    times_escalated=0,
+                    last_seen_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                self.db.add(rule_stat)
