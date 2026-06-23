@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Auth
     api_key: str = ""
 
+    # Slack
+    slack_webhook_url: str = ""
+
     # Alert limits per tier
     free_alert_limit_daily: int = 1000
     pro_alert_limit_daily: int = 50000
