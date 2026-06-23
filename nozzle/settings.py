@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Auth
+    api_key: str = ""
+
     # Alert limits per tier
     free_alert_limit_daily: int = 1000
     pro_alert_limit_daily: int = 50000

@@ -59,7 +59,10 @@ class NoiseClassifier:
         X, y = np.array(X), np.array(y)
         self.model.fit(X, y)
         self._trained = True
-        logger.info(f"Trained classifier on {len(X)} samples, accuracy: {self.model.score(X, y):.2f}")
+        import joblib, os
+        os.makedirs("models", exist_ok=True)
+        joblib.dump(self.model, "models/noise_classifier.pkl")
+        logger.info(f"Trained classifier on {len(X)} samples, saved to models/noise_classifier.pkl")
         return True
 
     def predict_noise_probability(self, alert, rule_stats=None) -> float:

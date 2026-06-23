@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Security
 from fastapi.middleware.cors import CORSMiddleware
 
 from nozzle.settings import settings
 from nozzle.core.logging_config import setup_logging
 from nozzle.api.router import api_router
+from nozzle.web.utils.auth import verify_api_key
 
 
 @asynccontextmanager
@@ -32,7 +33,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(api_router, prefix="/api/v1")
+    app.include_router(api_router, prefix="/api/v1", dependencies=[Security(verify_api_key)])
 
     return app
 

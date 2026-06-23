@@ -51,7 +51,8 @@ class SemanticStrategy(ClusteringStrategy):
 
         # Generate embeddings
         model = self._get_model()
-        embeddings = model.encode(descriptions, show_progress_bar=False)
+        import asyncio
+        embeddings = await asyncio.to_thread(model.encode, descriptions, show_progress_bar=False, batch_size=32)
 
         # Cosine similarity matrix
         sim_matrix = cosine_similarity(embeddings)
