@@ -16,15 +16,6 @@ STRATEGY_REGISTRY: dict[str, Type[ClusteringStrategy]] = {
     "semantic": SemanticStrategy,
     "temporal_burst": TemporalBurstStrategy,
     "hybrid": HybridStrategy,
-    # Future:
-    # "field_similarity": FieldSimilarityStrategy,
-    # "ml_based": MLBasedStrategy,
-    "semantic": SemanticStrategy,
-    "temporal_burst": TemporalBurstStrategy,
-    "hybrid": HybridStrategy,
-    # "temporal_burst": TemporalBurstStrategy,
-    "hybrid": HybridStrategy,
-    # "behavioral": BehavioralStrategy,
 }
 
 
@@ -34,7 +25,6 @@ def get_strategy(name: str, **kwargs) -> ClusteringStrategy:
     if strategy_class is None:
         raise ValueError(f"No strategy registered: {name}")
 
-    # Filter kwargs to only what the strategy accepts
     import inspect
     sig = inspect.signature(strategy_class.__init__)
     valid_params = set(sig.parameters.keys()) - {"self"}

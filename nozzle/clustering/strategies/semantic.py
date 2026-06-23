@@ -3,7 +3,6 @@
 from uuid import uuid4
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
 
 from nozzle.clustering.base import ClusteringStrategy
 from nozzle.domain.schemas import NormalizedAlert, ClusterCandidate
@@ -35,6 +34,7 @@ class SemanticStrategy(ClusteringStrategy):
     def _get_model(self):
         """Lazy-load the transformer model."""
         if self._model is None:
+            from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer("all-MiniLM-L6-v2")
         return self._model
 
@@ -83,7 +83,7 @@ class SemanticStrategy(ClusteringStrategy):
                 for j in range(n):
                     if j not in visited:
                         # Rule-based pre-filter
-                        if self.use_rule_id and alerts[i].rule_id != alerts[j].rule_id:
+                        if self.use_rule_id and alerts[current].rule_id != alerts[j].rule_id:
                             continue
                         if sim_matrix[current, j] >= self.similarity_threshold:
                             stack.append(j)

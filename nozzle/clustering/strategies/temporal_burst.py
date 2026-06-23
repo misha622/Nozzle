@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 from collections import defaultdict
 import numpy as np
-from sklearn.ensemble import IsolationForest
 
 from nozzle.clustering.base import ClusteringStrategy
 from nozzle.domain.schemas import NormalizedAlert, ClusterCandidate
@@ -78,6 +77,7 @@ class TemporalBurstStrategy(ClusteringStrategy):
             features = (features - features.mean(axis=0)) / (features.std(axis=0) + 1e-8)
 
             # Isolation Forest for anomaly detection
+            from sklearn.ensemble import IsolationForest
             iso = IsolationForest(
                 contamination=self.contamination,
                 random_state=42,

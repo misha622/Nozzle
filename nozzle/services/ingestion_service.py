@@ -1,7 +1,7 @@
 ﻿"""Service for fetching and storing alerts from sources."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,8 +28,11 @@ class IngestionService:
         limit: int = 1000,
     ) -> dict:
         """Fetch alerts from a source, normalize, and store them."""
+        if since is None:
+            since = datetime.utcnow() - timedelta(hours=24)
+
         result = await self.db.execute(
-            select(Source).where(Source.id == str(source_id))
+            select(Source).where(Source.id == source_id)
         )
         source = result.scalar_one_or_none()
         if source is None:
