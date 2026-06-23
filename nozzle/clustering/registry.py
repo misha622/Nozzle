@@ -7,6 +7,7 @@ from nozzle.clustering.strategies.rule_based import RuleBasedStrategy
 from nozzle.clustering.strategies.ml_based import MLBasedStrategy
 from nozzle.clustering.strategies.semantic import SemanticStrategy
 from nozzle.clustering.strategies.temporal_burst import TemporalBurstStrategy
+from nozzle.clustering.strategies.hybrid import HybridStrategy
 
 
 STRATEGY_REGISTRY: dict[str, Type[ClusteringStrategy]] = {
@@ -14,12 +15,15 @@ STRATEGY_REGISTRY: dict[str, Type[ClusteringStrategy]] = {
     "ml_based": MLBasedStrategy,
     "semantic": SemanticStrategy,
     "temporal_burst": TemporalBurstStrategy,
+    "hybrid": HybridStrategy,
     # Future:
     # "field_similarity": FieldSimilarityStrategy,
     # "ml_based": MLBasedStrategy,
     "semantic": SemanticStrategy,
     "temporal_burst": TemporalBurstStrategy,
+    "hybrid": HybridStrategy,
     # "temporal_burst": TemporalBurstStrategy,
+    "hybrid": HybridStrategy,
     # "behavioral": BehavioralStrategy,
 }
 
