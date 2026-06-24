@@ -1,10 +1,9 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import (
+from sqlalchemy import JSON as sa_JSON, (
     Column, String, Integer, Float, Text, DateTime, ForeignKey, Index, Enum as SAEnum,
     UniqueConstraint
 )
-from sqlalchemy.dialects.postgresql import JSONB, INET
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from nozzle.domain.enums import (
     AlertStatus, ClusterStatus, Decision, FeedbackSource,
@@ -34,7 +33,7 @@ class Source(Base):
     id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[SourceType] = mapped_column(SAEnum(SourceType), nullable=False)
-    config: Mapped[dict] = mapped_column(JSONB, default=dict)
+    config: Mapped[dict] = mapped_column(sa.JSON, default=dict)
     status: Mapped[SourceStatus] = mapped_column(
         SAEnum(SourceStatus), default=SourceStatus.ACTIVE
     )
@@ -84,19 +83,19 @@ class Alert(Base):
     severity: Mapped[int] = mapped_column(Integer, default=0)
     agent_name: Mapped[str | None] = mapped_column(String(255))
     agent_id: Mapped[str | None] = mapped_column(String(128))
-    source_ip: Mapped[str | None] = mapped_column(INET)
+    source_ip: Mapped[str | None] = mapped_column(sa.String(45))
     source_hostname: Mapped[str | None] = mapped_column(String(255))
-    destination_ip: Mapped[str | None] = mapped_column(INET)
+    destination_ip: Mapped[str | None] = mapped_column(sa.String(45))
     description: Mapped[str] = mapped_column(Text, default="")
     full_log: Mapped[str | None] = mapped_column(Text)
-    raw_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    raw_json: Mapped[dict] = mapped_column(sa.JSON, default=dict)
     status: Mapped[AlertStatus] = mapped_column(SAEnum(AlertStatus), default=AlertStatus.NEW)
     cluster_id: Mapped[uuid.UUID | None] = mapped_column(
         String(36), ForeignKey("clusters.id", ondelete="SET NULL")
     )
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     normalized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_data: Mapped[dict] = mapped_column(sa.JSON, default=dict)
 
     # Relationships
     source: Mapped["Source"] = relationship(back_populates="alerts")
@@ -134,7 +133,7 @@ class Cluster(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_data: Mapped[dict] = mapped_column(sa.JSON, default=dict)
 
     # Relationships
     alerts: Mapped[list["Alert"]] = relationship(back_populates="cluster", lazy="selectin")
@@ -169,7 +168,7 @@ class Feedback(Base):
     )
     comment: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    extra_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_data: Mapped[dict] = mapped_column(sa.JSON, default=dict)
 
     # Relationships
     alert: Mapped["Alert | None"] = relationship(back_populates="feedbacks")

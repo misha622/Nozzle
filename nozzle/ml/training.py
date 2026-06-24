@@ -15,6 +15,19 @@ class NoiseClassifier:
     """Predicts whether an alert is noise based on historical feedback."""
 
     def __init__(self):
+        import os
+        self._trained = False
+        model_path = "models/noise_classifier.pkl"
+        if os.path.exists(model_path):
+            try:
+                import joblib
+                self.model = joblib.load(model_path)
+                self._trained = True
+                logging.getLogger(__name__).info("Loaded pre-trained model from disk")
+                return
+            except Exception:
+                pass
+
         self.model = LGBMClassifier(
             n_estimators=100, max_depth=5, num_leaves=15,
             min_child_samples=10, random_state=42,
