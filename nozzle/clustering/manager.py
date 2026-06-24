@@ -121,13 +121,20 @@ class ClusteringManager:
 
     async def _update_rule_stats(self, candidates):
         """Update RuleStats after clustering."""
+        all_ids = [str(aid) for cand in candidates for aid in cand.alert_ids]
+        if not all_ids:
+            return
+
+        # Single query: fetch all alerts in one go
+        result = await self.db.execute(
+            select(Alert).where(Alert.id.in_(all_ids))
+        )
+        alert_map = {a.id: a for a in result.scalars().all()}
+
         rule_counts = {}
         for candidate in candidates:
             for alert_id in candidate.alert_ids:
-                result = await self.db.execute(
-                    select(Alert).where(Alert.id == str(alert_id))
-                )
-                alert = result.scalar_one_or_none()
+                alert = alert_map.get(str(alert_id))
                 if alert:
                     key = (alert.source_id, alert.rule_id)
                     rule_counts[key] = rule_counts.get(key, 0) + 1

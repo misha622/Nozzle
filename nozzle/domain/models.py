@@ -1,8 +1,8 @@
-import uuid
+﻿import uuid
 from datetime import datetime
-from sqlalchemy import JSON as sa_JSON, (
+from sqlalchemy import (
     Column, String, Integer, Float, Text, DateTime, ForeignKey, Index, Enum as SAEnum,
-    UniqueConstraint
+    UniqueConstraint, JSON
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from nozzle.domain.enums import (
@@ -23,24 +23,19 @@ def new_uuid():
     return uuid.uuid4()
 
 
-# ============================================================
-# Source
-# ============================================================
-
 class Source(Base):
     __tablename__ = "sources"
 
-    id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(new_uuid()))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[SourceType] = mapped_column(SAEnum(SourceType), nullable=False)
-    config: Mapped[dict] = mapped_column(sa.JSON, default=dict)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[SourceStatus] = mapped_column(
         SAEnum(SourceStatus), default=SourceStatus.ACTIVE
     )
     last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-    # Relationships
     alerts: Mapped[list["Alert"]] = relationship(back_populates="source", lazy="selectin")
 
     __table_args__ = (
@@ -48,33 +43,24 @@ class Source(Base):
     )
 
 
-# ============================================================
-# User
-# ============================================================
-
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(new_uuid()))
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     tier: Mapped[UserTier] = mapped_column(SAEnum(UserTier), default=UserTier.FREE)
     alert_limit_daily: Mapped[int] = mapped_column(Integer, default=1000)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-    # Relationships
     feedbacks: Mapped[list["Feedback"]] = relationship(back_populates="user", lazy="selectin")
 
-
-# ============================================================
-# Alert
-# ============================================================
 
 class Alert(Base):
     __tablename__ = "alerts"
 
-    id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    source_id: Mapped[uuid.UUID] = mapped_column(
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(new_uuid()))
+    source_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
     )
     external_id: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -83,21 +69,20 @@ class Alert(Base):
     severity: Mapped[int] = mapped_column(Integer, default=0)
     agent_name: Mapped[str | None] = mapped_column(String(255))
     agent_id: Mapped[str | None] = mapped_column(String(128))
-    source_ip: Mapped[str | None] = mapped_column(sa.String(45))
+    source_ip: Mapped[str | None] = mapped_column(String(45))
     source_hostname: Mapped[str | None] = mapped_column(String(255))
-    destination_ip: Mapped[str | None] = mapped_column(sa.String(45))
+    destination_ip: Mapped[str | None] = mapped_column(String(45))
     description: Mapped[str] = mapped_column(Text, default="")
     full_log: Mapped[str | None] = mapped_column(Text)
-    raw_json: Mapped[dict] = mapped_column(sa.JSON, default=dict)
+    raw_json: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[AlertStatus] = mapped_column(SAEnum(AlertStatus), default=AlertStatus.NEW)
-    cluster_id: Mapped[uuid.UUID | None] = mapped_column(
+    cluster_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("clusters.id", ondelete="SET NULL")
     )
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     normalized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    extra_data: Mapped[dict] = mapped_column(sa.JSON, default=dict)
+    extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
-    # Relationships
     source: Mapped["Source"] = relationship(back_populates="alerts")
     cluster: Mapped["Cluster | None"] = relationship(back_populates="alerts")
     feedbacks: Mapped[list["Feedback"]] = relationship(back_populates="alert", lazy="selectin")
@@ -113,14 +98,10 @@ class Alert(Base):
     )
 
 
-# ============================================================
-# Cluster
-# ============================================================
-
 class Cluster(Base):
     __tablename__ = "clusters"
 
-    id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(new_uuid()))
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     strategy: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -133,9 +114,8 @@ class Cluster(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
-    extra_data: Mapped[dict] = mapped_column(sa.JSON, default=dict)
+    extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
-    # Relationships
     alerts: Mapped[list["Alert"]] = relationship(back_populates="cluster", lazy="selectin")
     feedbacks: Mapped[list["Feedback"]] = relationship(back_populates="cluster", lazy="selectin")
 
@@ -145,21 +125,17 @@ class Cluster(Base):
     )
 
 
-# ============================================================
-# Feedback
-# ============================================================
-
 class Feedback(Base):
     __tablename__ = "feedback"
 
-    id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    alert_id: Mapped[uuid.UUID | None] = mapped_column(
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(new_uuid()))
+    alert_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("alerts.id", ondelete="SET NULL")
     )
-    cluster_id: Mapped[uuid.UUID | None] = mapped_column(
+    cluster_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("clusters.id", ondelete="SET NULL")
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     decision: Mapped[Decision] = mapped_column(SAEnum(Decision), nullable=False)
@@ -168,9 +144,8 @@ class Feedback(Base):
     )
     comment: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    extra_data: Mapped[dict] = mapped_column(sa.JSON, default=dict)
+    extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
-    # Relationships
     alert: Mapped["Alert | None"] = relationship(back_populates="feedbacks")
     cluster: Mapped["Cluster | None"] = relationship(back_populates="feedbacks")
     user: Mapped["User"] = relationship(back_populates="feedbacks")
@@ -183,16 +158,11 @@ class Feedback(Base):
     )
 
 
-# ============================================================
-# Rule stats (materialized view candidate, for now — a table)
-# ============================================================
-
 class RuleStats(Base):
-    """Агрегированная статистика по правилам."""
     __tablename__ = "rule_stats"
 
-    id: Mapped[uuid.UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    source_id: Mapped[uuid.UUID] = mapped_column(
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(new_uuid()))
+    source_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False
     )
     external_rule_id: Mapped[str] = mapped_column(String(128), nullable=False)

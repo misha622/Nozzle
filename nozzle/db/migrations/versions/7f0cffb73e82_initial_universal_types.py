@@ -1,15 +1,15 @@
-"""initial: create all tables
+"""initial: universal types
 
-Revision ID: 33b1aa61e0bf
+Revision ID: 7f0cffb73e82
 Revises: 
-Create Date: 2026-06-22 13:13:04.592952
+Create Date: 2026-06-24 20:18:32.308166
 """
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
-revision: str = '33b1aa61e0bf'
+
+revision: str = '7f0cffb73e82'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -62,9 +62,9 @@ def upgrade() -> None:
     sa.Column('severity', sa.Integer(), nullable=False),
     sa.Column('agent_name', sa.String(length=255), nullable=True),
     sa.Column('agent_id', sa.String(length=128), nullable=True),
-    sa.Column('source_ip', sa.String(45), nullable=True),
+    sa.Column('source_ip', sa.String(length=45), nullable=True),
     sa.Column('source_hostname', sa.String(length=255), nullable=True),
-    sa.Column('destination_ip', sa.String(45), nullable=True),
+    sa.Column('destination_ip', sa.String(length=45), nullable=True),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('full_log', sa.Text(), nullable=True),
     sa.Column('raw_json', sa.JSON(), nullable=False),
